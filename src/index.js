@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const supabase = require('./shared/supabase');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
+const bot = require('./bot/index');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -306,10 +307,10 @@ app.post('/api/admin/tickets/:ticketId/answer', adminAuth, async (req, res) => {
     }
 
     // Отправляем ответ пользователю через бота
-    // await bot.sendMessage(user.telegram_id, 
-    //   `📬 <b>Ответ на ваш вопрос:</b>\n\n${answer}\n\n<i>Ваш вопрос: ${ticket.question}</i>`, 
-    //   { parse_mode: 'HTML' }
-    // );
+    await bot.sendMessage(user.telegram_id, 
+      `📬 <b>Ответ на ваш вопрос:</b>\n\n${answer}\n\n<i>Ваш вопрос: ${ticket.question}</i>`, 
+      { parse_mode: 'HTML' }
+    );
 
     // Обновляем статус тикета
     const { error: updateError } = await require('./config/supabase')

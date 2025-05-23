@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import ru from 'date-fns/locale/ru';
 
 export default function Broadcast({ token }) {
   const [message, setMessage] = useState('');
@@ -12,26 +15,44 @@ export default function Broadcast({ token }) {
   const [activeTab, setActiveTab] = useState('message');
   const [newTemplate, setNewTemplate] = useState({ title: '', content: '' });
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [scheduledBroadcasts, setScheduledBroadcasts] = useState([]);
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/admin/users', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(r => r.json()),
-      fetch('/api/admin/broadcast-templates', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(r => r.json())
-    ])
-      .then(([usersData, templatesData]) => {
-        setUsers(usersData);
-        setTemplates(templatesData);
-        setLoading(false);
-      })
-      .catch(e => {
-        setError('Ошибка загрузки данных');
-        setLoading(false);
-      });
-  }, [token]);
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/users`, { headers: { Authorization: 'Bearer ' + token } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Ошибка получения пользователей');
+      setUsers(data);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/broadcast-templates`, { headers: { Authorization: 'Bearer ' + token } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Ошибка получения шаблонов');
+      setTemplates(data);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const fetchScheduledBroadcasts = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/scheduled-broadcasts`, { headers: { Authorization: 'Bearer ' + token } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Ошибка получения запланированных рассылок');
+      setScheduledBroadcasts(data);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -44,7 +65,7 @@ export default function Broadcast({ token }) {
     }
 
     try {
-      const res = await fetch('/api/admin/broadcast', {
+      const res = await fetch(`${apiUrl}/api/admin/broadcast`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -79,7 +100,7 @@ export default function Broadcast({ token }) {
     }
 
     try {
-      const res = await fetch('/api/admin/broadcast-templates', {
+      const res = await fetch(`${apiUrl}/api/admin/broadcast-templates`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -105,7 +126,7 @@ export default function Broadcast({ token }) {
 
   const handleDeleteTemplate = async (id) => {
     try {
-      const res = await fetch(`/api/admin/broadcast-templates/${id}`, {
+      const res = await fetch(`${apiUrl}/api/admin/broadcast-templates/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -127,10 +148,84 @@ export default function Broadcast({ token }) {
     setActiveTab('message');
   };
 
+  const handleSendBroadcast = async () => {
+    if (!message.trim()) {
+      toast.error('Сообщение не может быть пустым.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/broadcast`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Ошибка отправки сообщения');
+      toast.success('Сообщение успешно отправлено');
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScheduleBroadcast = async () => {
+    if (!message.trim() || !scheduledAt) {
+      toast.error('Сообщение и время обязательны.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/scheduled-broadcasts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ message, scheduledAt })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Ошибка планирования рассылки');
+      toast.success('Рассылка успешно запланирована');
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteScheduledBroadcast = async (id) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/scheduled-broadcasts/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: 'Bearer ' + token
+        }
+      });
+      if (!res.ok) throw new Error('Ошибка удаления рассылки');
+      toast.success('Рассылка успешно удалена');
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.telegram_id.toString().includes(searchQuery)
   );
+
+  useEffect(() => {
+    fetchUsers();
+    fetchTemplates();
+    fetchScheduledBroadcasts();
+  }, [token]);
 
   return (
     <div className="py-8 px-0 sm:px-8 w-full">
