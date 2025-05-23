@@ -19,8 +19,7 @@ if (!JWT_SECRET) {
 app.use(cors());
 app.use(express.json());
 
-// Импортируем бота
-const bot = require('./bot');
+// const bot = require('./bot');
 
 // Маршруты API
 app.get('/api/health', (req, res) => {
@@ -226,7 +225,7 @@ app.post('/api/admin/broadcast', adminAuth, async (req, res) => {
     let count = 0;
     for (const u of users) {
       try {
-        await bot.sendMessage(u.telegram_id, message);
+        // await bot.sendMessage(u.telegram_id, message);
         count++;
       } catch (e) {
         console.error('Error sending message to user:', e);
@@ -307,10 +306,10 @@ app.post('/api/admin/tickets/:ticketId/answer', adminAuth, async (req, res) => {
     }
 
     // Отправляем ответ пользователю через бота
-    await bot.sendMessage(user.telegram_id, 
-      `📬 <b>Ответ на ваш вопрос:</b>\n\n${answer}\n\n<i>Ваш вопрос: ${ticket.question}</i>`, 
-      { parse_mode: 'HTML' }
-    );
+    // await bot.sendMessage(user.telegram_id, 
+    //   `📬 <b>Ответ на ваш вопрос:</b>\n\n${answer}\n\n<i>Ваш вопрос: ${ticket.question}</i>`, 
+    //   { parse_mode: 'HTML' }
+    // );
 
     // Обновляем статус тикета
     const { error: updateError } = await require('./config/supabase')
