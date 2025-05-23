@@ -21,135 +21,146 @@ function getBaseUrl() {
 }
 
 export default function Referrals({ token }) {
-  const [top, setTop] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [list, setList] = useState([]);
+  const [topReferrals, setTopReferrals] = useState([]);
+  const [referredUsers, setReferredUsers] = useState([]);
+  const [selectedReferrer, setSelectedReferrer] = useState(null);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
   // Для рекламы
-  const [adLinks, setAdLinks] = useState([]);
-  const [adLoading, setAdLoading] = useState(false);
-  const [adError, setAdError] = useState('');
-  const [adSuccess, setAdSuccess] = useState('');
-  const [adCopy, setAdCopy] = useState('');
-  const [adName, setAdName] = useState('');
-  const [adDeleteLoading, setAdDeleteLoading] = useState('');
+  const [adRefLinks, setAdRefLinks] = useState([]);
+  const [newAdRefName, setNewAdRefName] = useState('');
+  const [isAdRefModalOpen, setIsAdRefModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/admin/referrals/top', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(setTop);
+  const apiUrl = import.meta.env.VITE_API_URL || '';
 
-    fetch('/api/admin/ad-ref-links', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(setAdLinks);
-  }, [token]);
-
-  const loadList = (referrer_id) => {
+  const fetchTopReferrals = async () => {
     setLoading(true);
-    setSelected(referrer_id);
-    setModalOpen(true);
-    fetch(`/api/admin/referrals/${referrer_id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => { setList(data); setLoading(false); });
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/referrals/top`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setTopReferrals(data);
+    } catch {
+      // Handle error
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGenerateAdLink = async (e) => {
-    e.preventDefault();
-    setAdLoading(true);
-    setAdError('');
-    setAdSuccess('');
-    if (!adName.trim()) {
-      setAdError('Введите название ссылки');
-      setAdLoading(false);
+  const fetchReferredUsers = async (referrerId) => {
+    setLoading(true);
+    setSelectedReferrer(referrerId);
+    setModalOpen(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/referrals/${referrerId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setReferredUsers(data);
+    } catch {
+      // Handle error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAdRefLinks = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/ad-ref-links`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setAdRefLinks(data);
+    } catch {
+      // Handle error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddAdRefLink = async () => {
+    if (!newAdRefName.trim()) {
+      alert('Введите название для ссылки.');
       return;
     }
+    setLoading(true);
     try {
-      const res = await fetch('/api/admin/ad-ref-links', {
+      const res = await fetch(`${apiUrl}/api/admin/ad-ref-links`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ name: adName.trim() })
+        body: JSON.stringify({ name: newAdRefName.trim() })
       });
       if (res.ok) {
         const link = await res.json();
-        setAdLinks([link, ...adLinks]);
-        setAdSuccess('Ссылка сгенерирована');
-        setAdName('');
+        setAdRefLinks([link, ...adRefLinks]);
+        setNewAdRefName('');
       } else {
-        setAdError('Ошибка генерации ссылки');
+        // Handle error
       }
     } catch {
-      setAdError('Ошибка генерации ссылки');
+      // Handle error
     } finally {
-      setAdLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleCopy = (url) => {
-    navigator.clipboard.writeText(url);
-    setAdCopy('Скопировано!');
-    setTimeout(() => setAdCopy(''), 1500);
-  };
-
-  const handleDeleteAdLink = async (id) => {
-    setAdDeleteLoading(id);
-    setAdError('');
+  const handleDeleteAdRefLink = async (id) => {
+    setLoading(true);
     try {
-      const res = await fetch(`/api/admin/ad-ref-links/${id}`, {
+      const res = await fetch(`${apiUrl}/api/admin/ad-ref-links/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        setAdLinks(adLinks.filter(l => l.id !== id));
+        setAdRefLinks(adRefLinks.filter(l => l.id !== id));
       } else {
-        setAdError('Ошибка удаления ссылки');
+        // Handle error
       }
     } catch {
-      setAdError('Ошибка удаления ссылки');
+      // Handle error
     } finally {
-      setAdDeleteLoading('');
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchTopReferrals();
+    fetchAdRefLinks();
+  }, [token]);
 
   return (
     <div className="py-8 px-0 sm:px-8 w-full">
       {/* Блок для рекламных реферальных ссылок */}
       <div className="mb-8 bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 animate-fade-in">
         <h4 className="text-2xl font-bold mb-4 text-blue-700">Рекламные реферальные ссылки</h4>
-        <form onSubmit={handleGenerateAdLink} className="flex gap-4 items-end mb-4">
+        <form onSubmit={handleAddAdRefLink} className="flex gap-4 items-end mb-4">
           <div>
             <label className="block text-sm font-medium text-blue-800 mb-1">Название ссылки</label>
             <input
               type="text"
-              value={adName}
-              onChange={e => setAdName(e.target.value)}
+              value={newAdRefName}
+              onChange={e => setNewAdRefName(e.target.value)}
               className="border-2 border-blue-200 focus:border-blue-500 rounded-xl px-4 py-2 outline-none transition-all duration-200 bg-blue-50 text-base"
               placeholder="Например: Реклама в Telegram"
-              disabled={adLoading}
+              disabled={loading}
             />
           </div>
           <button
             type="submit"
             className="bg-blue-600 text-white px-6 py-2 rounded-xl shadow-md hover:bg-blue-700 transition-all font-semibold"
-            disabled={adLoading}
+            disabled={loading}
           >
-            {adLoading ? 'Генерация...' : 'Сгенерировать ссылку'}
+            {loading ? 'Генерация...' : 'Сгенерировать ссылку'}
           </button>
         </form>
-        {adError && <div className="text-red-600 mb-2">{adError}</div>}
-        {adSuccess && <div className="text-green-600 mb-2">{adSuccess}</div>}
         <div className="space-y-4">
-          {adLinks.map(link => {
+          {adRefLinks.map(link => {
             const url = `https://t.me/StarShip_VPN_Tunel_bot?start=ref_${link.referrer_id}`;
             return (
               <div key={link.id} className="bg-blue-50 rounded-xl p-4 border border-blue-100 flex flex-col gap-2">
@@ -157,19 +168,11 @@ export default function Referrals({ token }) {
                   <span className="font-bold text-white bg-blue-600 rounded-xl px-2 py-1 mr-2">{link.name}</span>
                   <span className="font-mono text-blue-800 text-sm break-all">{url}</span>
                   <button
-                    onClick={() => handleCopy(url)}
-                    className="ml-2 px-3 py-1 cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs"
-                  >
-                    Копировать
-                  </button>
-                  <button
-                    onClick={() => handleDeleteAdLink(link.id)}
+                    onClick={() => handleDeleteAdRefLink(link.id)}
                     className="ml-2 px-3 py-1 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs"
-                    disabled={adDeleteLoading === link.id}
                   >
-                    {adDeleteLoading === link.id ? 'Удаление...' : 'Удалить'}
+                    Удалить
                   </button>
-                  {adCopy && <span className="text-green-600 ml-2 text-xs">{adCopy}</span>}
                 </div>
                 <div className="text-xs text-gray-500">Создана: {link.created_at ? new Date(link.created_at).toLocaleString('ru-RU') : '-'}</div>
                 <div className="flex gap-6 mt-2">
@@ -195,14 +198,14 @@ export default function Referrals({ token }) {
             </tr>
           </thead>
           <tbody>
-            {top.map((u, i) => (
+            {topReferrals.map((u, i) => (
               <tr key={u.referrer_id} className="group transition-all duration-200 hover:bg-blue-50 border-b border-gray-100 last:border-b-0">
                 <td className="py-3 px-4">{i + 1}</td>
                 <td className="py-3 px-4 font-mono">{u.username || u.referrer_id}</td>
                 <td className="py-3 px-4 font-bold">{u.count}</td>
                 <td className="py-3 px-4 font-bold text-green-700">{u.paid_count}</td>
                 <td className="py-3 px-4">
-                  <button onClick={() => loadList(u.referrer_id)} className="bg-blue-600 text-white px-4 py-2 rounded-xl shadow-md hover:bg-blue-700 transition-all font-semibold cursor-pointer">Показать</button>
+                  <button onClick={() => fetchReferredUsers(u.referrer_id)} className="bg-blue-600 text-white px-4 py-2 rounded-xl shadow-md hover:bg-blue-700 transition-all font-semibold cursor-pointer">Показать</button>
                 </td>
               </tr>
             ))}
@@ -224,7 +227,7 @@ export default function Referrals({ token }) {
               </tr>
             </thead>
             <tbody>
-              {list.map(u => (
+              {referredUsers.map(u => (
                 <tr key={u.id} className="border-b border-gray-100 last:border-b-0">
                   <td className="py-2 px-2 font-mono text-xs">{u.id}</td>
                   <td className="py-2 px-2">{u.username}</td>

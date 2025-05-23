@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { formatOmskDate } from '../utils/formatDate';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import ru from 'date-fns/locale/ru';
 
 export default function Support({ token }) {
   const [tickets, setTickets] = useState([]);
@@ -13,9 +16,11 @@ export default function Support({ token }) {
   const [showNewTemplate, setShowNewTemplate] = useState(false);
   const [copySuccess, setCopySuccess] = useState('');
 
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+
   const fetchTickets = () => {
     setLoading(true);
-    fetch('/api/admin/tickets', {
+    fetch(`${apiUrl}/api/admin/tickets`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
@@ -30,7 +35,7 @@ export default function Support({ token }) {
   };
 
   const fetchTemplates = () => {
-    fetch('/api/admin/templates', {
+    fetch(`${apiUrl}/api/admin/templates`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
@@ -60,49 +65,78 @@ export default function Support({ token }) {
     if (!ticketId) return;
     setSuccess('');
     setError('');
-    const res = await fetch(`/api/admin/tickets/${ticketId}/answer`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ answer })
-    });
-    if (res.ok) {
-      setSuccess('Ответ отправлен пользователю');
-      setAnswer('');
-      setOpenTicketId(null);
-      fetchTickets();
-    } else {
+    if (!answer.trim()) {
+      toast.error('Ответ не может быть пустым.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/tickets/${ticketId}/answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ answer })
+      });
+      if (res.ok) {
+        setSuccess('Ответ отправлен пользователю');
+        setAnswer('');
+        setOpenTicketId(null);
+        fetchTickets();
+      } else {
+        setError('Ошибка отправки ответа');
+      }
+    } catch (e) {
       setError('Ошибка отправки ответа');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleCreateTemplate = async e => {
     e.preventDefault();
-    const res = await fetch('/api/admin/templates', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(newTemplate)
-    });
-    if (res.ok) {
-      setNewTemplate({ title: '', content: '' });
-      setShowNewTemplate(false);
-      fetchTemplates();
+    if (!newTemplate.title || !newTemplate.content) {
+      toast.error('Название и содержание шаблона обязательны.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/templates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(newTemplate)
+      });
+      if (res.ok) {
+        setNewTemplate({ title: '', content: '' });
+        setShowNewTemplate(false);
+        fetchTemplates();
+      }
+    } catch (e) {
+      setError('Ошибка создания шаблона');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteTemplate = async id => {
     if (!confirm('Удалить этот шаблон?')) return;
-    const res = await fetch(`/api/admin/templates/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.ok) {
-      fetchTemplates();
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/templates/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchTemplates();
+      }
+    } catch (e) {
+      setError('Ошибка удаления шаблона');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -119,13 +153,20 @@ export default function Support({ token }) {
 
   const handleDeleteTicket = async id => {
     if (!confirm('Удалить этот тикет?')) return;
-    const res = await fetch(`/api/admin/tickets/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.ok) {
-      fetchTickets();
-      setOpenTicketId(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/tickets/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchTickets();
+        setOpenTicketId(null);
+      }
+    } catch (e) {
+      setError('Ошибка удаления тикета');
+    } finally {
+      setLoading(false);
     }
   };
 

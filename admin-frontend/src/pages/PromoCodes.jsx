@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { formatOmskDate } from '../utils/formatDate';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { format } from 'date-fns';
+import ru from 'date-fns/locale/ru';
 
 export default function PromoCodes({ token }) {
   const [codes, setCodes] = useState([]);
@@ -11,10 +16,17 @@ export default function PromoCodes({ token }) {
   const [days, setDays] = useState('');
   const [maxUses, setMaxUses] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
+  const [promos, setPromos] = useState([]);
+  const [newPromo, setNewPromo] = useState({ code: '', days: '', max_uses: '', expires_at: null });
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingPromo, setEditingPromo] = useState(null);
+
+  const apiUrl = import.meta.env.VITE_API_URL || '';
 
   useEffect(() => {
     setLoading(true);
-    fetch('/api/admin/promos', {
+    fetch(`${apiUrl}/api/admin/promos`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
@@ -32,7 +44,7 @@ export default function PromoCodes({ token }) {
     e.preventDefault();
     setError('');
     setSuccess('');
-    const res = await fetch('/api/admin/promos', {
+    const res = await fetch(`${apiUrl}/api/admin/promos`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -52,7 +64,7 @@ export default function PromoCodes({ token }) {
   };
 
   const handleStatus = async (id, is_active) => {
-    await fetch(`/api/admin/promos/${id}`, {
+    await fetch(`${apiUrl}/api/admin/promos/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -65,12 +77,88 @@ export default function PromoCodes({ token }) {
   };
 
   const handleDelete = async id => {
-    await fetch(`/api/admin/promos/${id}`, {
+    await fetch(`${apiUrl}/api/admin/promos/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });
     setSuccess('Промокод удалён');
     setTimeout(() => setSuccess(''), 1000);
+  };
+
+  const handleAddPromo = async () => {
+    if (!newPromo.code || !newPromo.days) {
+      toast.error('Код и количество дней обязательны.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/promos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ code: newPromo.code, days: +newPromo.days, max_uses: newPromo.max_uses ? +newPromo.max_uses : null, expires_at: newPromo.expires_at || null })
+      });
+      if (res.ok) {
+        setSuccess('Промокод создан');
+        setNewPromo({ code: '', days: '', max_uses: '', expires_at: null });
+      } else {
+        setError('Ошибка создания промокода');
+      }
+    } catch (e) {
+      setError('Ошибка создания промокода');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPromo || !editingPromo.code || !editingPromo.days) {
+      toast.error('Код и количество дней обязательны.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/promos/${editingPromo.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ code: editingPromo.code, days: +editingPromo.days, max_uses: editingPromo.max_uses ? +editingPromo.max_uses : null, expires_at: editingPromo.expires_at || null })
+      });
+      if (res.ok) {
+        setSuccess('Промокод обновлен');
+        setIsEditing(false);
+      } else {
+        setError('Ошибка обновления промокода');
+      }
+    } catch (e) {
+      setError('Ошибка обновления промокода');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePromo = async (id) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/promos/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setSuccess('Промокод удалён');
+        setCodes(codes.filter(p => p.id !== id));
+      } else {
+        setError('Ошибка удаления промокода');
+      }
+    } catch (e) {
+      setError('Ошибка удаления промокода');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

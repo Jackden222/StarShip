@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { formatOmskDate } from '../utils/formatDate';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 
 export default function Servers({ token }) {
   const [servers, setServers] = useState([]);
@@ -20,6 +21,8 @@ export default function Servers({ token }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640); // breakpoint for sm
   const [showLongColumns, setShowLongColumns] = useState(false);
 
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 640);
@@ -30,19 +33,23 @@ export default function Servers({ token }) {
   }, []);
 
   useEffect(() => {
-    fetch('/api/admin/servers', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => {
-        setServers(data);
-        setLoading(false);
-      })
-      .catch(e => {
-        setError('Ошибка загрузки серверов');
-        setLoading(false);
-      });
+    fetchServers();
   }, [token, success]);
+
+  const fetchServers = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/admin/servers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setServers(data);
+      setLoading(false);
+    } catch (e) {
+      setError('Ошибка загрузки серверов');
+      setLoading(false);
+    }
+  };
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -54,8 +61,8 @@ export default function Servers({ token }) {
     setSuccess('');
     
     const url = editingServer 
-      ? `/api/admin/servers/${editingServer.id}`
-      : '/api/admin/servers';
+      ? `${apiUrl}/api/admin/servers/${editingServer.id}`
+      : `${apiUrl}/api/admin/servers`;
       
     const method = editingServer ? 'PATCH' : 'POST';
     
@@ -73,6 +80,7 @@ export default function Servers({ token }) {
       setForm({ name: '', country: '', status: 'online', api_url: '', cert_sha256: '', max_keys: 100 });
       setShowModal(false);
       setEditingServer(null);
+      fetchServers();
     } else {
       setError(editingServer ? 'Ошибка обновления сервера' : 'Ошибка добавления сервера');
     }
@@ -94,7 +102,7 @@ export default function Servers({ token }) {
   const handleDelete = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить сервер?')) {
       try {
-        const res = await fetch(`/api/admin/servers/${id}`, {
+        const res = await fetch(`${apiUrl}/api/admin/servers/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         });

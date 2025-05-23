@@ -31,6 +31,9 @@ export default function Sidebar({ view, setView, handleLogout }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const audioRef = useRef(new Audio('/notification.mp3'));
+  const [ticketCount, setTicketCount] = useState(0);
+
+  const apiUrl = import.meta.env.VITE_API_URL || '';
 
   useEffect(() => {
     const handleResize = () => {
@@ -48,7 +51,9 @@ export default function Sidebar({ view, setView, handleLogout }) {
     let timer;
     const fetchTickets = async () => {
       try {
-        const res = await fetch('/api/admin/tickets', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('admin_token') || '') } });
+        const token = localStorage.getItem('admin_token') || '';
+        if (!token) return;
+        const res = await fetch(`${apiUrl}/api/admin/tickets`, { headers: { Authorization: 'Bearer ' + token } });
         if (!res.ok) return;
         const data = await res.json();
         const hasOpenTickets = Array.isArray(data) && data.some(t => t.status === 'open');
@@ -62,6 +67,7 @@ export default function Sidebar({ view, setView, handleLogout }) {
         
         setPrevTicketsState(hasOpenTickets);
         setHasNewTickets(hasOpenTickets);
+        setTicketCount(data.filter(ticket => ticket.status === 'open').length);
       } catch {}
       timer = setTimeout(fetchTickets, 10000);
     };

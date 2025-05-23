@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { formatOmskDate } from '../utils/formatDate';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import ru from 'date-fns/locale/ru';
 
 export default function Keys({ token }) {
   const [keys, setKeys] = useState([]);
@@ -11,6 +14,8 @@ export default function Keys({ token }) {
   const [selectedKey, setSelectedKey] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640); // breakpoint for sm
   const [showLongColumns, setShowLongColumns] = useState(false);
+
+  const apiUrl = import.meta.env.VITE_API_URL || '';
 
   useEffect(() => {
     const handleResize = () => {
@@ -28,7 +33,7 @@ export default function Keys({ token }) {
   const fetchKeys = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/keys', {
+      const response = await fetch(`${apiUrl}/api/admin/keys`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
@@ -40,25 +45,26 @@ export default function Keys({ token }) {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedKey) return;
-    
-    try {
-      const response = await fetch(`/api/admin/keys/${selectedKey.id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        setSuccess('Ключ успешно удален');
-        setShowDeleteModal(false);
-        setSelectedKey(null);
-        fetchKeys();
-      } else {
+  const handleDelete = async (id) => {
+    if (window.confirm('Вы уверены, что хотите удалить ключ?')) {
+      setDeleteLoadingId(id);
+      try {
+        const res = await fetch(`${apiUrl}/api/admin/keys/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+          setSuccess('Ключ успешно удален');
+          setShowDeleteModal(false);
+          setSelectedKey(null);
+          fetchKeys();
+        } else {
+          setError('Ошибка при удалении ключа');
+        }
+      } catch (e) {
         setError('Ошибка при удалении ключа');
       }
-    } catch (e) {
-      setError('Ошибка при удалении ключа');
     }
   };
 
@@ -215,7 +221,7 @@ export default function Keys({ token }) {
               <p className="text-gray-700 mb-6">Вы уверены, что хотите удалить ключ Outline с ID <strong>{selectedKey?.outline_key_id}</strong>?</p>
               <div className="flex justify-end gap-4">
                 <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Отмена</button>
-                <button onClick={handleDelete} className="px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors">Удалить</button>
+                <button onClick={() => handleDelete(selectedKey.id)} className="px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors">Удалить</button>
               </div>
             </motion.div>
           </motion.div>

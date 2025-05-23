@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { formatOmskDate } from '../utils/formatDate';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import ru from 'date-fns/locale/ru';
 
 function daysLeft(date) {
   if (!date) return '-';
@@ -59,6 +62,8 @@ export default function Users({ token }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640); // breakpoint for sm
   const [showIdColumn, setShowIdColumn] = useState(false);
 
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 640);
@@ -70,7 +75,7 @@ export default function Users({ token }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch('/api/admin/users', {
+    fetch(`${apiUrl}/api/admin/users`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
@@ -88,7 +93,7 @@ export default function Users({ token }) {
         setError('Ошибка загрузки пользователей');
         setLoading(false);
       });
-  }, [token]);
+  }, [token, apiUrl]);
 
   const handleEdit = (id, date, balance) => {
     setEditId(id);
@@ -97,7 +102,7 @@ export default function Users({ token }) {
   };
 
   const handleSave = async (id) => {
-    const res = await fetch(`/api/admin/users/${id}`, {
+    const res = await fetch(`${apiUrl}/api/admin/users/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -114,7 +119,7 @@ export default function Users({ token }) {
       setEditBalance('');
       // обновить список
       setLoading(true);
-      fetch('/api/admin/users', {
+      fetch(`${apiUrl}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(r => r.json())
@@ -130,7 +135,7 @@ export default function Users({ token }) {
   const handleDeleteUser = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить пользователя?')) {
       try {
-        const res = await fetch(`/api/admin/users/${id}`, {
+        const res = await fetch(`${apiUrl}/api/admin/users/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         });
