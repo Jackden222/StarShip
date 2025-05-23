@@ -707,4 +707,9 @@ app.delete('/api/admin/scheduled-broadcasts/:id', adminAuth, async (req, res) =>
 // Запуск сервера
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
 }); 
