@@ -1,0 +1,21 @@
+Amsterdam
+pass 2003Danilka
+ssh root@167.172.42.189
+
+Frankfurt
+pass 2003Danilka
+ssh root@139.59.129.221
+{"apiUrl":"https://139.59.129.221:30697/nf6lVav_Mcp97d3-U3wfdQ","certSha256":"ABB28E1E7055C869B9C88FF16F7AD11BE4C13CF92FA3BD6081F754B12CBE5BEB"}
+
+
+Singapure
+pass 2003Danilka
+ssh root@206.189.40.173
+
+
+
+
+DanilAdminLogin  такой пароль eriwjTSXhB?o4Yx
+RustamAdminLogin такой пароль ^F3OxQIc?iBd9SB
+
+

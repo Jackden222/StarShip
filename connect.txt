@@ -1,0 +1,6 @@
+ssh root@167.172.42.189
+
+sudo bash -c "$(curl -sS https://raw.githubusercontent.com/Jigsaw-Code/outline-server/master/src/server_manager/install_scripts/install_server.sh)"
+
+
+{"apiUrl":"https://46.226.166.179:49548/GSsGR9NZ8y4jzejRTJbjEA","certSha256":"B2ADFDE58AF7EB1B7F0EF46A9DFF810F807037870B622DD561E4598C28A0C0FC"}
