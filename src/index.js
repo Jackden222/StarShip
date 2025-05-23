@@ -226,7 +226,7 @@ app.post('/api/admin/broadcast', adminAuth, async (req, res) => {
     let count = 0;
     for (const u of users) {
       try {
-        // await bot.sendMessage(u.telegram_id, message);
+        await bot.sendMessage(u.telegram_id, message);
         count++;
       } catch (e) {
         console.error('Error sending message to user:', e);
