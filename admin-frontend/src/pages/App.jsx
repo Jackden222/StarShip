@@ -20,8 +20,9 @@ export default function App() {
   const handleLogin = async () => {
     setError('');
     setLoading(true);
+    const apiUrl = import.meta.env.VITE_API_URL || '';
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch(`${apiUrl}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
