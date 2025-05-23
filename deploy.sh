@@ -1,24 +1,31 @@
 #!/bin/bash
 
-# Создаем структуру на сервере
-mkdir -p /var/www/starshipvpn/{api,admin,bot}
+# Остановка процессов
+pm2 stop all
 
-# Копируем файлы
-cp -r src/* /var/www/starshipvpn/api/
-cp -r admin-frontend/* /var/www/starshipvpn/admin/
-cp -r bot/* /var/www/starshipvpn/bot/
+# Получение последних изменений
+git pull origin main
 
-# Устанавливаем зависимости
-cd /var/www/starshipvpn/api
+# Установка зависимостей API
+cd /var/www/starship
 npm install --production
 
-cd /var/www/starshipvpn/admin
+# Сборка админки
+cd admin-frontend
 npm install
 npm run build
+cd ..
 
-cd /var/www/starshipvpn/bot
+# Установка зависимостей бота
+cd bot
 npm install --production
+cd ..
 
-# Запускаем через PM2
-pm2 start /var/www/starshipvpn/api/src/index.js --name "starshipvpn-api"
-pm2 start /var/www/starshipvpn/bot/index.js --name "starshipvpn-bot"
+# Запуск процессов
+pm2 start ecosystem.config.js
+
+# Сохранение конфигурации PM2
+pm2 save
+
+# Перезапуск nginx
+systemctl restart nginx
