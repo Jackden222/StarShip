@@ -15,6 +15,7 @@ services:
         sync: false
       - key: PORT
         value: 3000
+    healthCheckPath: /health
 
   - type: web
     name: starship-admin
@@ -30,6 +31,8 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: VITE_API_URL
+        value: https://starship-api.onrender.com
 
   - type: worker
     name: starship-bot

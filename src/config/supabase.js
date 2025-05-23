@@ -4,6 +4,11 @@ require('dotenv').config();
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing Supabase credentials');
+  throw new Error('Missing Supabase credentials');
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 module.exports = supabase; 

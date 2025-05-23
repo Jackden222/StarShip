@@ -4,11 +4,16 @@ require('dotenv').config();
 const fetch = (...args) => import('node-fetch').then(mod => mod.default(...args));
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const supabase = require('./config/supabase');
+const supabase = require('./shared/supabase');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+if (!JWT_SECRET) {
+  console.error('Missing JWT_SECRET');
+  throw new Error('Missing JWT_SECRET');
+}
 
 // Middleware
 app.use(cors());
@@ -19,6 +24,11 @@ const bot = require('./bot');
 
 // Маршруты API
 app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
@@ -36,18 +46,32 @@ const DO_TOKEN = process.env.DO_TOKEN;
 
 // Новый эндпоинт логина
 app.post('/api/admin/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
-  const { data: admin, error } = await supabase
-    .from('admins_v2')
-    .select('*')
-    .eq('username', username)
-    .single();
-  if (error || !admin) return res.status(401).json({ error: 'Неверный логин или пароль' });
-  const valid = await bcrypt.compare(password, admin.password_hash);
-  if (!valid) return res.status(401).json({ error: 'Неверный логин или пароль' });
-  const token = jwt.sign({ id: admin.id, username: admin.username }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token });
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+    
+    const { data: admin, error } = await supabase
+      .from('admins_v2')
+      .select('*')
+      .eq('username', username)
+      .single();
+      
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (!admin) return res.status(401).json({ error: 'Неверный логин или пароль' });
+    
+    const valid = await bcrypt.compare(password, admin.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Неверный логин или пароль' });
+    
+    const token = jwt.sign({ id: admin.id, username: admin.username }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Новый middleware авторизации
