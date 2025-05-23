@@ -7,7 +7,11 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/api': 'http://localhost:3000'
+      '/api': {
+        target: process.env.VITE_API_URL || 'https://starship-api.onrender.com',
+        changeOrigin: true,
+        secure: true
+      }
     }
   }
 })

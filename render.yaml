@@ -1,5 +1,22 @@
 services:
   - type: web
+    name: starship-api
+    env: node
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        value: 3000
+
+  - type: web
     name: starship-admin
     env: node
     buildCommand: npm install
