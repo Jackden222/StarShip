@@ -41,16 +41,25 @@ bot.getMe().then(me => { botUsername = me.username; });
 bot.onText(/\/start(?:\s+ref[_-]?([\w-]+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  const refId = match[1] ? (match[1].startsWith('ad-') ? match[1] : match[1]) : null;
+  const refId = match[1] ? match[1] : null;
 
   // Если это рекламная ссылка
-  if (refId && refId.startsWith('ad-')) {
+  if (refId) {
     try {
-      await fetch('http://localhost:3000/api/ad-ref-click', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referrer_id: refId })
-      });
+      // Проверяем, существует ли ссылка
+      const { data: adLink } = await supabase
+        .from('ad_ref_links')
+        .select('referrer_id')
+        .eq('short_id', refId)
+        .single();
+
+      if (adLink) {
+        await fetch('http://localhost:3000/api/ad-ref-click', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referrer_id: refId })
+        });
+      }
     } catch (e) {
       // Не критично, если не удалось отправить
     }
@@ -64,15 +73,29 @@ bot.onText(/\/start(?:\s+ref[_-]?([\w-]+))?/, async (msg, match) => {
     .single();
   if (!user) {
     let referred_by = null;
-    if (refId && !refId.startsWith('ad-')) {
-      // Получаем пригласившего
-      const { data: refUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('telegram_id', refId)
+    let ad_ref_id = null;
+    
+    if (refId) {
+      // Проверяем, это рекламная ссылка или реферальная
+      const { data: adLink } = await supabase
+        .from('ad_ref_links')
+        .select('referrer_id')
+        .eq('short_id', refId)
         .single();
-      if (refUser) referred_by = refUser.id;
+
+      if (adLink) {
+        ad_ref_id = adLink.referrer_id;
+      } else {
+        // Получаем пригласившего
+        const { data: refUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('telegram_id', refId)
+          .single();
+        if (refUser) referred_by = refUser.id;
+      }
     }
+
     // Создаём пользователя
     const { data: newUser } = await supabase
       .from('users')
@@ -82,7 +105,7 @@ bot.onText(/\/start(?:\s+ref[_-]?([\w-]+))?/, async (msg, match) => {
           username: msg.from.username,
           subscription_end: null,
           referred_by,
-          ad_ref_id: refId && refId.startsWith('ad-') ? refId : null,
+          ad_ref_id,
           country: msg.from.language_code || null
         }
       ])
@@ -96,17 +119,17 @@ bot.onText(/\/start(?:\s+ref[_-]?([\w-]+))?/, async (msg, match) => {
       ]);
     }
     // Если это рекламная ссылка, увеличиваем registrations
-    if (refId && refId.startsWith('ad-')) {
+    if (ad_ref_id) {
       const { data: adData, error: adErr } = await supabase
         .from('ad_ref_links')
         .select('registrations')
-        .eq('referrer_id', refId)
+        .eq('referrer_id', ad_ref_id)
         .single();
       if (!adErr && adData) {
         await supabase
           .from('ad_ref_links')
           .update({ registrations: (adData.registrations || 0) + 1 })
-          .eq('referrer_id', refId);
+          .eq('referrer_id', ad_ref_id);
       }
     }
   } else if (!user.country && msg.from.language_code) {

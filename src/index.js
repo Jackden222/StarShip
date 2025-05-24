@@ -7,6 +7,8 @@ const bcrypt = require('bcryptjs');
 const { createClient } = require('@supabase/supabase-js');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 const bot = require('./bot/index');
+const { v4: uuidv4 } = require('uuid');
+const { customAlphabet } = require('nanoid');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -645,12 +647,15 @@ app.get('/api/admin/ad-ref-links', adminAuth, async (req, res) => {
 // Генерация новой рекламной реферальной ссылки с именем
 app.post('/api/admin/ad-ref-links', adminAuth, async (req, res) => {
   const { v4: uuidv4 } = require('uuid');
+  const { customAlphabet } = require('nanoid');
+  const nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
   const referrer_id = `ad-${uuidv4()}`;
+  const short_id = nanoid();
   const { data, error } = await supabase
     .from('ad_ref_links')
-    .insert([{ referrer_id, name }])
+    .insert([{ referrer_id, name, short_id }])
     .select()
     .single();
   if (error) return res.status(500).json({ error: error.message });
@@ -676,14 +681,14 @@ app.post('/api/ad-ref-click', async (req, res) => {
   const { data, error: selectError } = await supabase
     .from('ad_ref_links')
     .select('clicks')
-    .eq('referrer_id', referrer_id)
+    .eq('short_id', referrer_id)
     .single();
   if (selectError || !data) return res.status(404).json({ error: 'not found' });
   // Инкрементируем
   const { error } = await supabase
     .from('ad_ref_links')
     .update({ clicks: (data.clicks || 0) + 1 })
-    .eq('referrer_id', referrer_id);
+    .eq('short_id', referrer_id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });

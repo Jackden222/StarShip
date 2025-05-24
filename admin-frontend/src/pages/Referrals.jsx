@@ -162,7 +162,7 @@ export default function Referrals({ token }) {
         </form>
         <div className="space-y-4">
           {adRefLinks.map(link => {
-            const url = `https://t.me/StarShip_VPN_Tunel_bot?start=ref_${link.referrer_id}`;
+            const url = `https://t.me/StarShip_VPN_Tunel_bot?start=ref_${link.short_id}`;
             return (
               <div key={link.id} className="bg-blue-50 rounded-xl p-4 border border-blue-100 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
