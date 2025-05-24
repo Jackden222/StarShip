@@ -48,22 +48,22 @@ export default function Keys({ token }) {
   const handleDelete = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить ключ?')) {
       setDeleteLoadingId(id);
-      try {
+    try {
         const res = await fetch(`${apiUrl}/api/admin/keys/${id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
         if (res.ok) {
-          setSuccess('Ключ успешно удален');
-          setShowDeleteModal(false);
-          setSelectedKey(null);
-          fetchKeys();
-        } else {
-          setError('Ошибка при удалении ключа');
-        }
-      } catch (e) {
+        setSuccess('Ключ успешно удален');
+        setShowDeleteModal(false);
+        setSelectedKey(null);
+        fetchKeys();
+      } else {
         setError('Ошибка при удалении ключа');
+      }
+    } catch (e) {
+      setError('Ошибка при удалении ключа');
       }
     }
   };

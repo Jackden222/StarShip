@@ -38,7 +38,7 @@ export default function Referrals({ token }) {
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/api/admin/referrals/top`, {
-        headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
       setTopReferrals(data);
@@ -70,7 +70,7 @@ export default function Referrals({ token }) {
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/api/admin/ad-ref-links`, {
-        headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
       setAdRefLinks(data);

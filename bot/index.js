@@ -6,6 +6,8 @@ require('dotenv').config();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+const apiUrl = process.env.API_URL || 'http://localhost:3000'; // Используем переменную окружения API_URL
+
 // Обработка пополнения баланса
 bot.on('pre_checkout_query', async (query) => {
   try {
@@ -43,7 +45,7 @@ bot.on('successful_payment', async (msg) => {
     const stars = msg.successful_payment.total_amount / 100; // Конвертируем копейки в рубли
     const amount = stars * 10; // 1 звезда = 10 рублей
 
-    const response = await axios.post('http://localhost:3000/api/balance/transaction', {
+    const response = await axios.post(`${apiUrl}/api/balance/transaction`, {
       userId: user.id,
       stars,
       amount
@@ -191,7 +193,7 @@ bot.on('message', async (ctx) => {
       const stars = ctx.message.star_count;
       const amount = stars * 10; // 1 звезда = 10 рублей
 
-      const response = await axios.post('http://localhost:3000/api/balance/transaction', {
+      const response = await axios.post(`${apiUrl}/api/balance/transaction`, {
         userId: user.id,
         stars,
         amount

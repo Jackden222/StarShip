@@ -40,14 +40,14 @@ export default function Servers({ token }) {
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/api/admin/servers`, {
-        headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-      setServers(data);
-      setLoading(false);
+        setServers(data);
+        setLoading(false);
     } catch (e) {
-      setError('Ошибка загрузки серверов');
-      setLoading(false);
+        setError('Ошибка загрузки серверов');
+        setLoading(false);
     }
   };
 

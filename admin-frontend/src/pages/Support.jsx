@@ -72,20 +72,20 @@ export default function Support({ token }) {
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/api/admin/tickets/${ticketId}/answer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ answer })
-      });
-      if (res.ok) {
-        setSuccess('Ответ отправлен пользователю');
-        setAnswer('');
-        setOpenTicketId(null);
-        fetchTickets();
-      } else {
-        setError('Ошибка отправки ответа');
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ answer })
+    });
+    if (res.ok) {
+      setSuccess('Ответ отправлен пользователю');
+      setAnswer('');
+      setOpenTicketId(null);
+      fetchTickets();
+    } else {
+      setError('Ошибка отправки ответа');
       }
     } catch (e) {
       setError('Ошибка отправки ответа');
@@ -103,17 +103,17 @@ export default function Support({ token }) {
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/api/admin/templates`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(newTemplate)
-      });
-      if (res.ok) {
-        setNewTemplate({ title: '', content: '' });
-        setShowNewTemplate(false);
-        fetchTemplates();
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(newTemplate)
+    });
+    if (res.ok) {
+      setNewTemplate({ title: '', content: '' });
+      setShowNewTemplate(false);
+      fetchTemplates();
       }
     } catch (e) {
       setError('Ошибка создания шаблона');
@@ -127,11 +127,11 @@ export default function Support({ token }) {
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/api/admin/templates/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchTemplates();
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      fetchTemplates();
       }
     } catch (e) {
       setError('Ошибка удаления шаблона');
@@ -156,12 +156,12 @@ export default function Support({ token }) {
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}/api/admin/tickets/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchTickets();
-        setOpenTicketId(null);
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      fetchTickets();
+      setOpenTicketId(null);
       }
     } catch (e) {
       setError('Ошибка удаления тикета');

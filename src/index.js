@@ -1,10 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
 const fetch = (...args) => import('node-fetch').then(mod => mod.default(...args));
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const supabase = require('./shared/supabase');
+const { createClient } = require('@supabase/supabase-js');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 const bot = require('./bot/index');
 
@@ -43,6 +43,18 @@ removeExpiredKeys();
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin123';
 const DO_TOKEN = process.env.DO_TOKEN;
+
+// Инициализируем Supabase клиент здесь
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing Supabase credentials');
+  // Не выбрасываем ошибку сразу, чтобы сервис starship-admin мог запуститься
+  // throw new Error('Missing Supabase credentials'); 
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Новый эндпоинт логина
 app.post('/api/admin/login', async (req, res) => {
@@ -99,19 +111,31 @@ function adminAuth(req, res, next) {
 
 // Список пользователей
 app.get('/api/admin/users', adminAuth, async (req, res) => {
-  const { data, error } = await require('./config/supabase')
-    .from('users')
-    .select('id, telegram_id, username, subscription_end, created_at, balance, country')
-  if (error) {
-    console.error('Supabase error /api/admin/users:', error);
-    return res.status(500).json({ error: error.message });
+  console.log('Received GET /api/admin/users request'); // Лог начала обработки
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, telegram_id, username, subscription_end, created_at, balance, country');
+
+    if (error) {
+      console.error('Supabase error /api/admin/users:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log('Successfully fetched users from Supabase'); // Лог успешного получения данных
+    console.log('Number of users fetched:', data ? data.length : 0); // Лог количества пользователей
+    console.log('Sample user data:', data && data.length > 0 ? data.slice(0, 5) : 'No data'); // Лог части данных
+
+    res.json(data);
+  } catch (e) {
+    console.error('Error in /api/admin/users endpoint:', e); // Лог общей ошибки
+    res.status(500).json({ error: e.message || 'Internal server error' });
   }
-  res.json(data);
 });
 
 // Список ключей
 app.get('/api/admin/keys', adminAuth, async (req, res) => {
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('outline_keys')
     .select(`
       id, 
@@ -139,7 +163,7 @@ app.get('/api/admin/keys', adminAuth, async (req, res) => {
 // Удаление ключа
 app.delete('/api/admin/keys/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
-  const { error } = await require('./config/supabase')
+  const { error } = await supabase
     .from('outline_keys')
     .delete()
     .eq('id', id);
@@ -149,7 +173,7 @@ app.delete('/api/admin/keys/:id', adminAuth, async (req, res) => {
 
 // Промокоды: просмотр
 app.get('/api/admin/promos', adminAuth, async (req, res) => {
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('promo_codes')
     .select('id, code, days, is_active, created_at, max_uses, used_count, expires_at')
     .order('created_at', { ascending: false });
@@ -161,7 +185,7 @@ app.get('/api/admin/promos', adminAuth, async (req, res) => {
 app.post('/api/admin/promos', adminAuth, async (req, res) => {
   const { code, days, max_uses, expires_at } = req.body;
   if (!code || !days) return res.status(400).json({ error: 'code and days required' });
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('promo_codes')
     .insert([{ 
       code, 
@@ -180,7 +204,7 @@ app.post('/api/admin/promos', adminAuth, async (req, res) => {
 app.patch('/api/admin/promos/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
   const { is_active } = req.body;
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('promo_codes')
     .update({ is_active })
     .eq('id', id)
@@ -192,7 +216,7 @@ app.patch('/api/admin/promos/:id', adminAuth, async (req, res) => {
 // DELETE /api/admin/promos/:id — удаление промокода
 app.delete('/api/admin/promos/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
-  const { error } = await require('./config/supabase')
+  const { error } = await supabase
     .from('promo_codes')
     .delete()
     .eq('id', id);
@@ -209,7 +233,7 @@ app.post('/api/admin/broadcast', adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'message required' });
     }
     
-    let query = require('./config/supabase')
+    let query = supabase
       .from('users')
       .select('telegram_id');
       
@@ -244,7 +268,7 @@ app.post('/api/admin/broadcast', adminAuth, async (req, res) => {
 app.patch('/api/admin/users/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
   const { subscription_end } = req.body;
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('users')
     .update({ subscription_end })
     .eq('id', id)
@@ -255,7 +279,7 @@ app.patch('/api/admin/users/:id', adminAuth, async (req, res) => {
 
 // Получение списка тикетов
 app.get('/api/admin/tickets', adminAuth, async (req, res) => {
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('support_tickets')
     .select(`
       id,
@@ -285,7 +309,7 @@ app.post('/api/admin/tickets/:ticketId/answer', adminAuth, async (req, res) => {
 
   try {
     // Получаем тикет
-    const { data: ticket, error: ticketError } = await require('./config/supabase')
+    const { data: ticket, error: ticketError } = await supabase
       .from('support_tickets')
       .select('user_id, question')
       .eq('id', ticketId)
@@ -296,7 +320,7 @@ app.post('/api/admin/tickets/:ticketId/answer', adminAuth, async (req, res) => {
     }
 
     // Получаем telegram_id пользователя
-    const { data: user, error: userError } = await require('./config/supabase')
+    const { data: user, error: userError } = await supabase
       .from('users')
       .select('telegram_id')
       .eq('id', ticket.user_id)
@@ -313,7 +337,7 @@ app.post('/api/admin/tickets/:ticketId/answer', adminAuth, async (req, res) => {
     );
 
     // Обновляем статус тикета
-    const { error: updateError } = await require('./config/supabase')
+    const { error: updateError } = await supabase
       .from('support_tickets')
       .update({ 
         status: 'answered',
@@ -335,7 +359,7 @@ app.post('/api/admin/tickets/:ticketId/answer', adminAuth, async (req, res) => {
 
 // Получение шаблонов ответов
 app.get('/api/admin/templates', adminAuth, async (req, res) => {
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('support_templates')
     .select('*')
     .order('created_at', { ascending: false });
@@ -347,7 +371,7 @@ app.get('/api/admin/templates', adminAuth, async (req, res) => {
 app.post('/api/admin/templates', adminAuth, async (req, res) => {
   const { title, content } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'title and content required' });
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('support_templates')
     .insert([{ title, content }])
     .select();
@@ -358,7 +382,7 @@ app.post('/api/admin/templates', adminAuth, async (req, res) => {
 // Удаление шаблона
 app.delete('/api/admin/templates/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
-  const { error } = await require('./config/supabase')
+  const { error } = await supabase
     .from('support_templates')
     .delete()
     .eq('id', id);
@@ -369,7 +393,7 @@ app.delete('/api/admin/templates/:id', adminAuth, async (req, res) => {
 // Удаление тикета
 app.delete('/api/admin/tickets/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
-  const { error } = await require('./config/supabase')
+  const { error } = await supabase
     .from('support_tickets')
     .delete()
     .eq('id', id);
@@ -379,7 +403,7 @@ app.delete('/api/admin/tickets/:id', adminAuth, async (req, res) => {
 
 // Получить список серверов
 app.get('/api/admin/servers', adminAuth, async (req, res) => {
-  const { data: servers, error: serversError } = await require('./config/supabase')
+  const { data: servers, error: serversError } = await supabase
     .from('servers')
     .select('*')
     .order('created_at', { ascending: false });
@@ -388,7 +412,7 @@ app.get('/api/admin/servers', adminAuth, async (req, res) => {
 
   // Получаем количество активных ключей для каждого сервера
   const serversWithActiveKeys = await Promise.all(servers.map(async (server) => {
-    const { count, error: countError } = await require('./config/supabase')
+    const { count, error: countError } = await supabase
       .from('outline_keys')
       .select('*', { count: 'exact', head: true })
       .eq('server_id', server.id)
@@ -411,7 +435,7 @@ app.post('/api/admin/servers', adminAuth, async (req, res) => {
   if (!name || !country || !status || !api_url || !cert_sha256) {
     return res.status(400).json({ error: 'Все поля обязательны' });
   }
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('servers')
     .insert([{ name, country, status, api_url, cert_sha256, max_keys: max_keys ? Number(max_keys) : 100 }])
     .select()
@@ -427,7 +451,7 @@ app.patch('/api/admin/servers/:id', adminAuth, async (req, res) => {
   if (!name || !country || !status || !api_url || !cert_sha256) {
     return res.status(400).json({ error: 'Все поля обязательны' });
   }
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('servers')
     .update({ name, country, status, api_url, cert_sha256, max_keys: max_keys ? Number(max_keys) : 100 })
     .eq('id', id)
@@ -440,7 +464,7 @@ app.patch('/api/admin/servers/:id', adminAuth, async (req, res) => {
 // Топ рефералов
 app.get('/api/admin/referrals/top', adminAuth, async (req, res) => {
   // Получаем все рефералы с username пригласившего и подпиской приглашённых
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('referrals')
     .select('referrer_id, users:referrer_id(username), referred_id, referred:referred_id(subscription_end)');
   if (error) return res.status(500).json({ error: error.message });
@@ -462,7 +486,7 @@ app.get('/api/admin/referrals/top', adminAuth, async (req, res) => {
 // Список приглашённых по пользователю
 app.get('/api/admin/referrals/:referrer_id', adminAuth, async (req, res) => {
   const referrer_id = req.params.referrer_id;
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('referrals')
     .select('referred_id, users:referred_id(username, telegram_id, created_at, balance, subscription_end)')
     .eq('referrer_id', referrer_id);
@@ -577,7 +601,7 @@ app.get('/api/admin/do-metrics/:id', adminAuth, async (req, res) => {
 
 // Получение шаблонов рассылки
 app.get('/api/admin/broadcast-templates', adminAuth, async (req, res) => {
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('broadcast_templates')
     .select('*')
     .order('created_at', { ascending: false });
@@ -589,7 +613,7 @@ app.get('/api/admin/broadcast-templates', adminAuth, async (req, res) => {
 app.post('/api/admin/broadcast-templates', adminAuth, async (req, res) => {
   const { title, content } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'title and content required' });
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('broadcast_templates')
     .insert([{ title, content }])
     .select();
@@ -600,7 +624,7 @@ app.post('/api/admin/broadcast-templates', adminAuth, async (req, res) => {
 // Удаление шаблона рассылки
 app.delete('/api/admin/broadcast-templates/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
-  const { error } = await require('./config/supabase')
+  const { error } = await supabase
     .from('broadcast_templates')
     .delete()
     .eq('id', id);
@@ -610,7 +634,7 @@ app.delete('/api/admin/broadcast-templates/:id', adminAuth, async (req, res) => 
 
 // Получение рекламных реферальных ссылок
 app.get('/api/admin/ad-ref-links', adminAuth, async (req, res) => {
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('ad_ref_links')
     .select('*')
     .order('created_at', { ascending: false });
@@ -624,7 +648,7 @@ app.post('/api/admin/ad-ref-links', adminAuth, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
   const referrer_id = `ad-${uuidv4()}`;
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('ad_ref_links')
     .insert([{ referrer_id, name }])
     .select()
@@ -636,7 +660,7 @@ app.post('/api/admin/ad-ref-links', adminAuth, async (req, res) => {
 // Удаление рекламной реферальной ссылки
 app.delete('/api/admin/ad-ref-links/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
-  const { error } = await require('./config/supabase')
+  const { error } = await supabase
     .from('ad_ref_links')
     .delete()
     .eq('id', id);
@@ -669,7 +693,7 @@ app.post('/api/admin/scheduled-broadcasts', adminAuth, async (req, res) => {
   const { message, scheduled_at, user_ids } = req.body;
   if (!message || !scheduled_at) return res.status(400).json({ error: 'message and scheduled_at required' });
   
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('scheduled_broadcasts')
     .insert([{ 
       message, 
@@ -685,7 +709,7 @@ app.post('/api/admin/scheduled-broadcasts', adminAuth, async (req, res) => {
 
 // Получение списка отложенных рассылок
 app.get('/api/admin/scheduled-broadcasts', adminAuth, async (req, res) => {
-  const { data, error } = await require('./config/supabase')
+  const { data, error } = await supabase
     .from('scheduled_broadcasts')
     .select('*')
     .order('scheduled_at', { ascending: true });
@@ -696,7 +720,7 @@ app.get('/api/admin/scheduled-broadcasts', adminAuth, async (req, res) => {
 // Удаление отложенной рассылки
 app.delete('/api/admin/scheduled-broadcasts/:id', adminAuth, async (req, res) => {
   const { id } = req.params;
-  const { error } = await require('./config/supabase')
+  const { error } = await supabase
     .from('scheduled_broadcasts')
     .delete()
     .eq('id', id);
