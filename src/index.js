@@ -733,6 +733,17 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
+// Удаляем запуск бота из API сервиса, если он запускается где-то еще
+// bot.launch().then(() => {
+//   console.log('Bot started');
+// }).catch((err) => {
+//   console.error('Error starting bot:', err);
+// });
+
+// Включаем graceful shutdown (оставляем для API сервера)
+process.once('SIGINT', () => app.close()); // Используем app.close для Express
+process.once('SIGTERM', () => app.close());
+
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();

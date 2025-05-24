@@ -29,6 +29,8 @@ export default function Broadcast({ token }) {
       setUsers(data);
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
