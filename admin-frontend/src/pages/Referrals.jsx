@@ -81,7 +81,8 @@ export default function Referrals({ token }) {
     }
   };
 
-  const handleAddAdRefLink = async () => {
+  const handleAddAdRefLink = async (e) => {
+    e.preventDefault();
     if (!newAdRefName.trim()) {
       alert('Введите название для ссылки.');
       return;
